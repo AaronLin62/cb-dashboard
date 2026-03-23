@@ -6,8 +6,8 @@ import plotly.express as px
 # ==========================================
 # 1. 資料庫連線設定 (改用 st.secrets 讀取機密)
 # ==========================================
-SUPABASE_URL = st.secrets["https://ljkqyvoupfvpszkiwwef.supabase.co"]
-SUPABASE_KEY = st.secrets["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxqa3F5dm91cGZ2cHN6a2l3d2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NDU3MzgsImV4cCI6MjA4ODAyMTczOH0.OTTFEl25LiXZhmVhStUvvb9t2FVZhbTJElC5riM2sQE"]
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
 @st.cache_resource
 def init_connection():
