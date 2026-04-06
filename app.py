@@ -4,6 +4,7 @@ import pandas as pd
 import yfinance as yf
 import numpy as np
 import datetime
+import altair as alt
 
 # ==========================================
 # 1. 資料庫連線設定
@@ -119,8 +120,20 @@ else:
                         "AI 趨勢預測線": [None] * (len(df_hist) - 1) + [y_prices[-1]] + list(future_y)
                     }).set_index("日期")
                     
-                    # 繪製精美走勢圖
-                    st.line_chart(chart_data, color=["#1f77b4", "#ff7f0e"])
+                    # === 升級版：動態縮放 Y 軸圖表 ===
+                    
+                    # 1. 將資料表「解壓縮 (Melt)」轉換為 Altair 專用的長格式
+                    df_melted = chart_data.reset_index().melt(id_vars=['日期'], var_name='線條種類', value_name='價格')
+                    
+                    # 2. 啟動底層繪圖引擎，並強制 Y 軸「不從零開始」(zero=False)
+                    chart = alt.Chart(df_melted).mark_line(point=True).encode( # 加入 point=True 顯示資料點
+                        x=alt.X('日期:T', title='日期'),
+                        y=alt.Y('價格:Q', scale=alt.Scale(zero=False), title='市價 (元)'), # 🔥 關鍵：取消歸零，自動貼合最高與最低價
+                        color=alt.Color('線條種類:N', scale=alt.Scale(domain=['實際歷史價格', 'AI 趨勢預測線'], range=['#1f77b4', '#ff7f0e']))
+                    ).interactive() # 🔥 賦予圖表靈魂：讓老闆可以用滑鼠滾輪隨意放大縮小！
+                    
+                    # 渲染圖表
+                    st.altair_chart(chart, use_container_width=True)
                     
                     st.write(f"📈 **AI 模型解讀：** 根據歷史走勢，預期未來 5 日價格將趨向 **{future_y[-1]:.2f} 元**。斜率狀態：{'向上 ↗' if coefficients[0] > 0 else '向下 ↘'}")
 
