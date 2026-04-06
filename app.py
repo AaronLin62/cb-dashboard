@@ -16,86 +16,81 @@ def init_connection():
 supabase = init_connection()
 
 @st.cache_data(ttl=600)
-def load_current_data():
-    response = supabase.table('convertible_bonds').select("*").execute()
-    df = pd.DataFrame(response.data)
-    if not df.empty:
-        df['current_price'] = pd.to_numeric(df['current_price'], errors='coerce')
-        df = df.dropna(subset=['current_price'])
-    return df
+def load_all_data():
+    # 讀取最新可轉債市價
+    cb_response = supabase.table('convertible_bonds').select("*").execute()
+    df_cb = pd.DataFrame(cb_response.data)
+    if not df_cb.empty:
+        df_cb['current_price'] = pd.to_numeric(df_cb['current_price'], errors='coerce')
+        df_cb = df_cb.dropna(subset=['current_price'])
+        
+    # 讀取全市場轉換價對照表
+    mapping_response = supabase.table('bond_stock_mapping').select("*").execute()
+    df_mapping = pd.DataFrame(mapping_response.data)
+    
+    return df_cb, df_mapping
 
 # ==========================================
-# 2. 👑 老闆專屬：手動對照表 (代替 CSV 資料庫)
-# 這裡我們先設定兩檔作為測試樣本，讓 yfinance 知道要抓誰
-# ==========================================
-MOCK_MAPPING = {
-    "11011": {"stock_code": "1101.TW", "conversion_price": 35.6},
-    "31052": {"stock_code": "3105.TWO", "conversion_price": 140.0} # 假設的穩懋可轉債
-}
-
-# ==========================================
-# 3. 網頁介面設計
+# 2. 網頁介面設計與核心邏輯
 # ==========================================
 st.set_page_config(page_title="可轉債戰情儀表板", page_icon="📈", layout="wide")
-st.title("📈 企業級可轉債戰情室 - yfinance 套利雷達版")
+st.title("📈 企業級可轉債戰情室 - 全市場雷達版")
 st.markdown("---")
 
-df_current = load_current_data()
+df_cb, df_mapping = load_all_data()
 
-if df_current.empty:
-    st.warning("目前資料庫中沒有報價資料。")
+if df_cb.empty or df_mapping.empty:
+    st.warning("⚠️ 系統正在等待資料庫初始化，請確認市價或對照表已匯入。")
 else:
-    st.subheader("🔥 負溢價套利雷達 (即時股價連線)")
+    st.subheader("🔥 負溢價套利雷達 (全市場動態連線)")
     
-    # 只篩選出我們有寫在 MOCK_MAPPING 裡的測試標的
-    test_bonds = df_current[df_current['bond_code'].isin(MOCK_MAPPING.keys())]
+    # 將兩張表進行交集比對 (只顯示既有報價又有轉換價的標的)
+    valid_bonds = df_cb[df_cb['bond_code'].isin(df_mapping['bond_code'])]
+    bond_options = valid_bonds['bond_code'] + " - " + valid_bonds['bond_name']
     
-    if test_bonds.empty:
-        st.info("目前資料庫最新的報價中，沒有包含我們測試的標的 (11011 或 31052)。")
-    else:
-        bond_options = test_bonds['bond_code'] + " - " + test_bonds['bond_name']
-        selected_option = st.selectbox("請選擇要進行套利分析的標的：", bond_options)
-        
+    selected_option = st.selectbox("🎯 請選擇要進行套利分析的標的：", bond_options)
+    
+    if selected_option:
         selected_code = selected_option.split(" - ")[0]
-        selected_name = selected_option.split(" - ")[1]
         
-        # 從我們手寫的對照表拿出參數
-        target_stock = MOCK_MAPPING[selected_code]["stock_code"]
-        conv_price = MOCK_MAPPING[selected_code]["conversion_price"]
-        bond_price = test_bonds[test_bonds['bond_code'] == selected_code]['current_price'].values[0]
+        # 動態從資料庫對照表中提取參數
+        mapping_info = df_mapping[df_mapping['bond_code'] == selected_code].iloc[0]
+        target_stock = mapping_info['stock_code']
+        conv_price = mapping_info['conversion_price']
+        bond_price = valid_bonds[valid_bonds['bond_code'] == selected_code]['current_price'].values[0]
+        
+        # 處理 yfinance 台股代碼後綴邏輯 (上市 .TW / 上櫃 .TWO)
+        yf_ticker = target_stock if ".TW" in target_stock or ".TWO" in target_stock else f"{target_stock}.TW"
         
         with st.spinner(f'📡 正在透過 yfinance 連線取得 {target_stock} 即時股價...'):
             try:
-                # 呼叫 yfinance 抓取即時股價
-                ticker = yf.Ticker(target_stock)
+                ticker = yf.Ticker(yf_ticker)
+                # 抓取最近一天的收盤價
                 stock_price = ticker.history(period="1d")['Close'].iloc[-1]
                 
                 # --- 執行套利演算法數學公式 ---
-                # 1. 轉換價值 = (100 / 轉換價) * 股票市價
                 conversion_value = (100 / conv_price) * stock_price
-                
-                # 2. 轉換溢價率 = (可轉債市價 - 轉換價值) / 轉換價值 * 100%
                 premium_rate = ((bond_price - conversion_value) / conversion_value) * 100
                 
                 # --- 渲染視覺化戰情看板 ---
                 col1, col2, col3 = st.columns(3)
                 col1.metric("可轉債最新市價", f"{bond_price:.2f} 元")
                 col2.metric(f"對應股票 ({target_stock}) 即時市價", f"{stock_price:.2f} 元")
-                col3.metric("合約轉換價", f"{conv_price:.2f} 元")
+                col3.metric("資料庫合約轉換價", f"{conv_price:.2f} 元")
                 
                 st.markdown("### 📊 套利分析結果")
                 
-                # 根據溢價率給予不同的顏色與警語
                 if premium_rate < 0:
                     st.success(f"🔥 發現潛在套利空間！目前折價 **{premium_rate:.2f}%**")
-                    st.write(f"💡 解讀：這張債券目前的理論價值應該是 {conversion_value:.2f} 元，但市場只賣 {bond_price:.2f} 元，被低估了！")
+                    st.write(f"💡 解讀：理論價值為 {conversion_value:.2f} 元，市場僅售 {bond_price:.2f} 元，存在低估套利空間！")
                 else:
                     st.info(f"⚖️ 目前為溢價狀態：**{premium_rate:.2f}%** (無套利空間)")
-                    st.write(f"💡 解讀：這張債券目前的理論價值是 {conversion_value:.2f} 元，市場賣 {bond_price:.2f} 元，價格合理包含保本價值。")
+                    st.write(f"💡 解讀：理論價值為 {conversion_value:.2f} 元，市場售價 {bond_price:.2f} 元，價格合理包含保本價值。")
                     
             except Exception as e:
-                st.error(f"連線 yfinance 發生錯誤：{e}")
+                st.error(f"連線 yfinance 或計算過程發生錯誤：{e}")
+                st.write("🔧 提示：若股票代碼抓取不到，可能是上櫃股票需後綴 `.TWO`，可於對照表中修正。")
 
     st.markdown("---")
-    st.subheader("📊 全市場低價尋寶區 (原有功能)")
-    st.dataframe(df_current[['bond_code', 'bond_name', 'current_price']], use_container_width=True)
+    st.subheader("📊 全市場市價總覽")
+    st.dataframe(df_cb[['bond_code', 'bond_name', 'current_price']], use_container_width=True)
