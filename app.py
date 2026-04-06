@@ -92,7 +92,7 @@ else:
                     st.warning("⚠️ 歷史資料累積不足 3 天，模型尚無法繪製準確的趨勢線。請等待每日流水線累積更多數據！")
                 else:
                     df_hist['record_date'] = pd.to_datetime(df_hist['record_date']).dt.date
-                    df_hist['price'] = pd.to_numeric(df_hist['price'], errors='coerce')
+                    df_hist['current_price'] = pd.to_numeric(df_hist['current_price'], errors='coerce')
                     
                     # 準備線性迴歸模型資料
                     x_days = np.arange(len(df_hist))
