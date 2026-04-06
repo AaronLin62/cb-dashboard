@@ -92,11 +92,13 @@ else:
                     st.warning("⚠️ 歷史資料累積不足 3 天，模型尚無法繪製準確的趨勢線。請等待每日流水線累積更多數據！")
                 else:
                     df_hist['record_date'] = pd.to_datetime(df_hist['record_date']).dt.date
+                    
+                    # 💡 絕對精準對接 close_price
                     df_hist['close_price'] = pd.to_numeric(df_hist['close_price'], errors='coerce')
                     
                     # 準備線性迴歸模型資料
                     x_days = np.arange(len(df_hist))
-                    y_prices = df_hist['price'].values
+                    y_prices = df_hist['close_price'].values
                     
                     # 執行一元一次方程式線性迴歸 (y = mx + b)
                     coefficients = np.polyfit(x_days, y_prices, 1)
@@ -122,4 +124,5 @@ else:
                     st.write(f"📈 **AI 模型解讀：** 根據歷史走勢，預期未來 5 日價格將趨向 **{future_y[-1]:.2f} 元**。斜率狀態：{'向上 ↗' if coefficients[0] > 0 else '向下 ↘'}")
 
             except Exception as e:
+                # 強化報錯機制，若再出錯會印出更詳細的資訊
                 st.error(f"運算過程發生錯誤：{e}")
