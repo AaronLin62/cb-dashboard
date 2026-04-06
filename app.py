@@ -115,7 +115,8 @@ else:
                     chart_data = pd.DataFrame({
                         "日期": list(df_hist['record_date']) + future_dates,
                         "實際歷史價格": list(y_prices) + [None]*5,
-                        "AI 趨勢預測線": list(poly_func(x_days)) + list(future_y)
+                        # 讓過去的橘線變成 None (不顯示)，只從歷史最後一天的真實價格開始畫出未來的 5 天
+                        "AI 趨勢預測線": [None] * (len(df_hist) - 1) + [y_prices[-1]] + list(future_y)
                     }).set_index("日期")
                     
                     # 繪製精美走勢圖
