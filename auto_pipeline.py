@@ -57,7 +57,7 @@ try:
     df.columns = df.columns.str.strip()
     code_col = [col for col in df.columns if '代號' in col or '代碼' in col][0]
     name_col = [col for col in df.columns if '名稱' in col][0]
-    price_col = [col for col in df.columns if '收盤' in col or '收市' in col][0]
+    price_col = [col for col in df.columns if '均價' in col][0]
 
     current_records = []
     history_records = []
