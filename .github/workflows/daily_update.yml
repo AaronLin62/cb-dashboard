@@ -1,3 +1,4 @@
+
 name: 每日可轉債資料自動更新
 
 # 設定觸發條件
@@ -32,5 +33,6 @@ jobs:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-      run: |
+      run: 
+        python update_conv_price.py
         python auto_pipeline.py
