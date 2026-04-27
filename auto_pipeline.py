@@ -100,6 +100,42 @@ try:
         supabase.table('bond_price_history').upsert(history_records, on_conflict='bond_code, record_date').execute()
         
         print(f"🎉 報告老闆：雙軌寫入完美結束！")
+        # ==========================================
+        # 5. Discord 戰情室警報推播系統
+        # ==========================================
+        # 嘗試從環境變數讀取 DISCORD_WEBHOOK
+        discord_webhook = os.environ.get("DISCORD_WEBHOOK")
+        
+        if discord_webhook:
+            print("📲 正在發送 Discord 推播通知給老闆...")
+            
+            # 建立專業的卡片式訊息 (Embed)
+            embed_msg = {
+                "title": "🚨 戰情室雷達：資料更新完成",
+                "description": f"老闆！今日 ({today_str}) 可轉債報價已全數匯入 Supabase。",
+                "color": 3066993, # 綠色邊框
+                "fields": [
+                    {"name": "資料庫狀態", "value": "✅ 同步成功", "inline": True},
+                    {"name": "下一步行動", "value": "請前往 Streamlit 戰情室查看最新 AI 預測與套利名單", "inline": False}
+                ],
+                "footer": {"text": "Quant Trading System V8"}
+            }
+            
+            # 打包要發送的資料
+            data = {
+                "username": "戰情室自動化雷達", # 機器人顯示名稱
+                "embeds": [embed_msg]
+            }
+            
+            try:
+                response = requests.post(discord_webhook, json=data)
+                response.raise_for_status() # 如果發生 HTTP 錯誤會拋出異常
+                print("✅ Discord 推播發送成功！")
+            except Exception as e:
+                print(f"❌ Discord 推播發送失敗：{e}")
+        else:
+            print("⚠️ 未偵測到 DISCORD_WEBHOOK，略過推播通知。")
+
         print(f"   ➡️ 看板更新：成功更新 {len(current_records)} 檔可轉債最新價格！")
         print(f"   ➡️ 歷史歸檔：成功將 {len(history_records)} 筆紀錄存入歷史檔案室！")
         
