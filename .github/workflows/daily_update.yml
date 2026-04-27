@@ -34,5 +34,4 @@ jobs:
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
       run: 
-        python update_conv_price.py
         python auto_pipeline.py
