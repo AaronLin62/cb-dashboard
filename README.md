@@ -1,7 +1,7 @@
 # cb-dashboard
 # 🚨 CB-Quant-V8 全自動可轉債套利戰情室
 
-**作者：[請填寫您的姓名/系級/學號]**
+**作者：[資工系/113502537/林俊綸]**
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![Supabase](https://img.shields.io/badge/Database-Supabase-green.svg)
