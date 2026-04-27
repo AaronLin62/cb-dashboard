@@ -31,5 +31,6 @@ jobs:
         # 從 GitHub Secrets 拿出鑰匙，交給 Python
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
       run: |
         python auto_pipeline.py
