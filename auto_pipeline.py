@@ -100,6 +100,32 @@ try:
         supabase.table('bond_price_history').upsert(history_records, on_conflict='bond_code, record_date').execute()
         
         print(f"🎉 報告老闆：雙軌寫入完美結束！")
+
+        # ==========================================
+        # 🌟 4.5 自動下市/到期清理邏輯 (Delisting Handling)
+        # ==========================================
+        print("🧹 啟動下市債券掃描程序...")
+        
+        # 1. 取得今天 CSV 裡成功存活的債券代碼 (轉換為 Set 集合)
+        today_codes = set([record["bond_code"] for record in current_records])
+        
+        # 2. 查詢資料庫中目前被標記為「活躍 (is_active=True)」的所有代碼
+        db_response = supabase.table('convertible_bonds').select('bond_code').eq('is_active', True).execute()
+        db_codes = set([row['bond_code'] for row in db_response.data])
+        
+        # 3. 利用 Set 差集運算 (O(N) 複雜度)，秒殺找出今天消失的代碼
+        delisted_codes = db_codes - today_codes
+        
+        if delisted_codes:
+            delisted_list = list(delisted_codes)
+            print(f"⚠️ 偵測到 {len(delisted_list)} 檔債券疑似下市或停止交易：{delisted_list}")
+            
+            # 4. 批次更新狀態 (Batch Update)，將這些下市標的標記為 False
+            supabase.table('convertible_bonds').update({"is_active": False}).in_("bond_code", delisted_list).execute()
+            print("✅ 下市清理邏輯執行完畢，已將標的從活躍名單剔除！")
+        else:
+            print("✅ 今日無活躍債券下市。")
+            
         # ==========================================
         # 5. Discord 戰情室警報推播系統
         # ==========================================
