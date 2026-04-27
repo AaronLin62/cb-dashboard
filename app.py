@@ -12,7 +12,7 @@ import altair as alt
 st.set_page_config(
     page_title="量化套利戰情室 V8", 
     page_icon="🚨", 
-    layout="wide", # 寬螢幕模式
+    layout="wide", 
     initial_sidebar_state="collapsed"
 )
 
@@ -59,8 +59,8 @@ def get_net_result(bond_price, stock_price, conv_price, discount_rate):
 
 @st.cache_data(ttl=3600)
 def load_data():
-    # ⭐️ 核心修正：只撈取活躍中的標的 (過濾下市債券)
-    response = supabase.table('convertible_bonds').select("*").eq('is_active', True).execute()
+    # ⭐️ 已移除 is_active 過濾，確保讀取完整資料庫
+    response = supabase.table('convertible_bonds').select("*").execute()
     return pd.DataFrame(response.data)
 
 # ==========================================
@@ -76,7 +76,7 @@ with st.sidebar:
     broker_discount = st.slider("券商手續費折讓 (例如 6 折)", 0.1, 1.0, 0.6)
     
 if df.empty:
-    st.warning("目前資料庫中無活躍標的，請確認爬蟲是否正常執行。")
+    st.warning("目前資料庫中無資料，請確認爬蟲是否正常執行。")
 else:
     # --- 啟動全市場雷達掃描 ---
     if st.button("🚀 啟動全市場套利機會掃描"):
@@ -132,21 +132,21 @@ else:
             # 頂部三大指標
             st.markdown("### 📊 今日戰情報告")
             m1, m2, m3 = st.columns(3)
-            m1.metric("📡 雷達掃描標的", f"{len(df)} 檔")
-            m2.metric("🎯 發現黃金機會", f"{len(df_golden)} 檔", delta="可進場")
+            m1.metric("📡 全市場掃描標的", f"{len(df)} 檔")
+            m2.metric("🎯 發現套利機會", f"{len(df_golden)} 檔", delta="發現獲利標的")
             
             # 處理最高淨利顯示
             max_profit = df_golden['🎯 預估淨利'].str.replace('%','').astype(float).max()
             m3.metric("🔥 最高預估淨利", f"{max_profit:.2f} %")
             
             st.markdown("---")
-            st.success(f"🎉 發現 {len(df_golden)} 檔具有正報酬空間的標的！")
+            st.success(f"🎉 發現 {len(df_golden)} 檔扣除成本後仍具套利空間的標的！")
             st.dataframe(df_golden.sort_values(by="🎯 預估淨利", ascending=False), use_container_width=True)
         else:
-            st.info("今日市場波動平穩，暫無符合成本效益之套利機會。")
+            st.info("今日市場暫無符合成本效益之套利機會。")
 
 # ==========================================
-# 5. AI 趨勢預測區塊 (保留原本預測邏輯)
+# 5. AI 趨勢預測區塊
 # ==========================================
 st.markdown("---")
 st.subheader("🔮 個別標的 AI 趨勢預測")
@@ -184,4 +184,3 @@ if target_bond:
             ).properties(height=400).interactive()
             
             st.altair_chart(chart, use_container_width=True)
-            st.caption("💡 註：預測線基於最小平方法線性回歸，僅供趨勢參考，不構成投資建議。")
