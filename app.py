@@ -95,6 +95,26 @@ with st.sidebar:
     st.header("⚙️ 參數設定")
     broker_discount = st.slider("券商手續費折讓 (例如 6 折)", 0.1, 1.0, 0.6)
     
+    # === 🚀 新增：即時成本視覺化面板 ===
+    st.markdown("---")
+    st.markdown("### 💸 摩擦成本即時試算")
+    st.caption("以單筆交易 10 萬元估算")
+    
+    base_amount = 100000 
+    fee_rate = 0.001425 
+    
+    # 計算單邊手續費 (含 20 元低消防禦)
+    single_fee = max(20, base_amount * fee_rate * broker_discount)
+    # 賣出證交稅固定千分之三
+    tax = base_amount * 0.003 
+    
+    total_cost = (single_fee * 2) + tax
+    total_cost_ratio = (total_cost / base_amount) * 100
+    
+    # 顯示會隨滑桿即時跳動的數字
+    st.info(f"🔥 **總摩擦成本：{total_cost_ratio:.3f}%**")
+    st.caption(f"• 買進手續費：{int(single_fee)} 元\n\n• 賣出手續費：{int(single_fee)} 元\n\n• 賣出證交稅：{int(tax)} 元")
+    
 if df.empty:
     st.warning("目前資料庫中無資料，請確認爬蟲是否正常執行。")
 else:
