@@ -16,10 +16,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 注入 CSS 打造深色發光儀表板與響應式設計
+# 注入 CSS 打造深色發光儀表板
 st.markdown("""
     <style>
-    /* --- 🖥️ 電腦版與共用設定 --- */
     [data-testid="stMetric"] {
         background-color: #1e1e1e;
         border-left: 5px solid #00ff00;
@@ -30,25 +29,6 @@ st.markdown("""
     [data-testid="stMetricLabel"] { color: #aaaaaa !important; }
     [data-testid="stMetricValue"] { color: #00ff00 !important; }
     .stAlert { border-radius: 10px; }
-
-    /* --- 📱 手機版專屬優化 (螢幕寬度小於 768px 時觸發) --- */
-    @media (max-width: 768px) {
-        /* 縮小指標區塊的內距，節省手機螢幕空間 */
-        [data-testid="stMetric"] {
-            padding: 10px; 
-            margin-bottom: 0.5rem;
-        }
-        /* 稍微縮小數字字體，避免在小螢幕上折行 */
-        [data-testid="stMetricValue"] { 
-            font-size: 1.8rem !important; 
-        }
-        /* 減少手機版畫面上方的留白，讓使用者一進來就看到重點 */
-        .block-container {
-            padding-top: 2rem !important;
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-        }
-    }
     </style>
 """, unsafe_allow_html=True)
 
