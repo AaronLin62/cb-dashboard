@@ -79,8 +79,10 @@ def get_net_result(bond_price, stock_price, conv_price, discount_rate):
 
 @st.cache_data(ttl=3600)
 def load_data():
-    # ⭐️ 已移除 is_active 過濾，確保讀取完整資料庫
-    response = supabase.table('convertible_bonds').select("*").execute()
+    response = supabase.table('convertible_bonds') \
+                       .select('bond_code, bond_name') \
+                       .eq('is_active', True) \
+                       .execute()
     return pd.DataFrame(response.data)
 
 # ==========================================
@@ -121,6 +123,7 @@ else:
     # --- 啟動全市場雷達掃描 ---
     if st.button("🚀 啟動全市場套利機會掃描"):
         golden_list = []
+        active_df = df[df['is_active'] == True].reset_index(drop=True)
         progress_bar = st.progress(0)
         status_text = st.empty()
         
