@@ -100,7 +100,40 @@ try:
         supabase.table('bond_price_history').upsert(history_records, on_conflict='bond_code, record_date').execute()
         
         print(f"🎉 報告老闆：雙軌寫入完美結束！")
+
+        # ==========================================
+        # 4.5 自動下市/到期清理邏輯 (使用 IN Clause 批次更新)
+        # ==========================================
+        print("🧹 啟動下市債券掃描程序...")
+    
+        # 1. 整理今天從櫃買中心抓到的所有有效代碼 (轉成 Set 集合加速比對)
+        today_codes = set([record["bond_code"] for record in current_records])
+    
+        # 🌟 團滅防禦安全鎖：如果今天抓到的資料少於 100 檔，代表 API 或資料源有異常(例如半天市)，絕對不可執行下市清理！
+        if len(today_codes) > 100:
+            # 2. 從 Supabase 撈出目前所有標記為「活躍 (is_active=True)」的代碼
+            db_response = supabase.table('convertible_bonds').select('bond_code').eq('is_active', True).execute()
+            db_codes = set([row['bond_code'] for row in db_response.data])
         
+            # 3. 集合運算 (差集)：在資料庫裡是活著的，但今天卻沒出現在市場報價上的，就是下市了！
+            delisted_codes = db_codes - today_codes
+        
+            if delisted_codes:
+                delisted_list = list(delisted_codes)
+                print(f"⚠️ 偵測到 {len(delisted_list)} 檔債券下市/到期：{delisted_list}")
+            
+                # 4. 🔥 這就是底層呼叫 SQL UPDATE ... WHERE bond_code IN (...) 的精華！
+                # 只需要一次網路請求，就能瞬間把名單上的債券全部註銷
+                supabase.table('convertible_bonds') \
+                        .update({"is_active": False}) \
+                        .in_("bond_code", delisted_list) \
+                        .execute()
+                    
+                print("✅ 幽靈標的已全數批次註銷完畢。")
+            else:
+                print("✅ 今日市場無活躍債券下市。")
+        else:
+            print("🛡️ 今日有效標的異常減少 (觸發安全鎖)，為避免誤刪，跳過下市清理程序！")
         # ==========================================
         # 5. Discord 戰情室警報推播系統
         # ==========================================
